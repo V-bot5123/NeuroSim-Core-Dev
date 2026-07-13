@@ -49,23 +49,27 @@ def compute_gramian(A_norm, T, B=None, system=None):
        
         STEP = 0.001
         t = np.arange(0, T + STEP / 2, STEP)
+        n_steps = len(t)
 
         dE = sp.linalg.expm(A_norm * STEP)
-        dEa = np.zeros((n_nodes, n_nodes, len(t)))
-        dEa[:, :, 0] = np.eye(n_nodes)
+        
+        Wc = mm(B, B.T)  # Initial term, Simpson weight = 1
+        dEa_running = np.eye(n_nodes)
 
-        dG = np.zeros((n_nodes, n_nodes, len(t)))
-        dG[:, :, 0] = mm(B, B.T)
+        for i in range(1, n_steps - 1):
+            dEa_running = mm(dEa_running, dE)
+            dEab = mm(dEa_running, B)
+            dG_curr = mm(dEab, dEab.T)
+            weight = 4.0 if (i % 2 != 0) else 2.0
+            Wc += weight * dG_curr
 
-        for i in np.arange(1, len(t)):
-            dEa[:, :, i] = mm(dEa[:, :, i - 1], dE)
-            dEab = mm(dEa[:, :, i], B)
-            dG[:, :, i] = mm(dEab, dEab.T)
+        if n_steps > 1:
+            dEa_running = mm(dEa_running, dE)
+            dEab = mm(dEa_running, B)
+            dG_curr = mm(dEab, dEab.T)
+            Wc += dG_curr
 
-        if sp.__version__ < "1.6.0":
-            Wc = sp.integrate.simps(dG, t, STEP, 2)
-        else:
-            Wc = sp.integrate.simpson(dG, t, STEP, 2)
+        Wc *= (STEP / 3.0)
 
         return Wc
 

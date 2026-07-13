@@ -146,26 +146,33 @@ def granger_causality_matrix(
     rss_full = np.array([_ols_rss(X, Y[:, i])[1] for i in range(N)])
 
     for i in range(N):
-        y_i = Y[:, i]
+        if rss_full[i] < 1e-16:
+            warnings.warn(
+                f"Node {i} has near-zero full-model residuals. "
+                f"F-tests targeting this node may be unreliable.",
+                UserWarning,
+                stacklevel=2,
+            )
 
-        for j in range(N):
+    for j in range(N):
+        # Restricted model: remove all lags belonging to region j
+        restricted_cols = [c for c in range(K) if (c % N) != j]
+        X_restr = X[:, restricted_cols]
+        # Pre-compute pseudo-inverse once per source region
+        X_restr_pinv = np.linalg.pinv(X_restr)
+
+        for i in range(N):
             if i == j:
                 continue
-
-            # Restricted model: remove all lags belonging to region j
-            restricted_cols = [c for c in range(K) if (c % N) != j]
-            _, rss_restr = _ols_rss(X[:, restricted_cols], y_i)
+            if rss_full[i] < 1e-16:
+                continue
+                
+            y_i = Y[:, i]
+            beta = X_restr_pinv @ y_i
+            residuals = y_i - X_restr @ beta
+            rss_restr = float(np.dot(residuals, residuals))
 
             delta = max(rss_restr - rss_full[i], 0.0)
-
-            if rss_full[i] < 1e-16:
-                warnings.warn(
-                    f"Node {i} has near-zero full-model residuals. "
-                    f"F-test for edge ({j}→{i}) may be unreliable.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-                continue
 
             F = (delta / df1) / (rss_full[i] / df2)
             F_matrix[i, j] = F
