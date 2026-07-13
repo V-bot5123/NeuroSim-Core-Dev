@@ -15,14 +15,11 @@ def modal_controllability(A_norm):
     eigenvalues, eigenvectors = eig(A_norm)
 
    
-    eigenvalues = np.real(eigenvalues)
-    eigenvectors = np.real(eigenvectors)
-
-
-    modal_weights = 1.0 - eigenvalues ** 2  
+    # Ensure complex magnitude is used for directed (asymmetric) matrices
+    modal_weights = 1.0 - np.abs(eigenvalues) ** 2  
 
    
-    mc = np.sum(modal_weights[np.newaxis, :] * (eigenvectors ** 2), axis=1)
+    mc = np.sum(modal_weights[np.newaxis, :] * (np.abs(eigenvectors) ** 2), axis=1)
 
     return np.real(mc)
 
@@ -35,14 +32,11 @@ def average_controllability(A_norm):
         )
 
     eigenvalues, eigenvectors = eig(A_norm)
-    eigenvalues = np.real(eigenvalues)
-    eigenvectors = np.real(eigenvectors)
-
-  
-    denom = 1.0 - eigenvalues ** 2
+    # Ensure complex magnitude is used for directed (asymmetric) matrices
+    denom = 1.0 - np.abs(eigenvalues) ** 2
     denom = np.where(np.abs(denom) < 1e-10, 1e-10, denom)
 
-    ac = np.sum((1.0 / denom)[np.newaxis, :] * (eigenvectors ** 2), axis=1)
+    ac = np.sum((1.0 / denom)[np.newaxis, :] * (np.abs(eigenvectors) ** 2), axis=1)
 
     return np.real(ac)
 
